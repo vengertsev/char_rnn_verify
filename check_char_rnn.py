@@ -355,28 +355,45 @@ for node in G.nodes():
     y_val_node = G.nodes[node]['y_val']
     if any(y_val_node>0.8):
       n_satisfy = n_satisfy + 1
-print("Ground truth property satisfaction rate:{}".format(n_satisfy/total_combinations))
+gt_satisfy = n_satisfy/total_combinations
+print("Ground truth property satisfaction rate:{}".format(gt_satisfy))
 
 ####################################################
 #  TensorSMC
 ####################################################
-n_trajectories = 0   # number trajectories drawn so far
-n_satisfy = 0     # number of trajectories satisfying property so far
-
 alpha = 1 
 beta = 1 
 
-for n_trajectories in range(0,11):
-  index_rand = random.randrange(total_combinations)
-  if 'y_val' in  G.nodes[index_rand].keys():
-    y_val_node = G.nodes[index_rand]['y_val']
-    if any(y_val_node>0.8):
-      n_satisfy = n_satisfy + 1
+smc_satisfy_rates = []
+smc_ro_estimates = []
+smc_nu_estimates = []
+increasing_samples  = range(1, total_combinations, 5)
 
-print("n_satisfy={}, n_trajectories={}".format(n_satisfy, n_trajectories))
-print("Ground truth property satisfaction rate:{}".format(n_satisfy/n_trajectories)) 
-ro = (n_satisfy + alpha)/(n_trajectories + alpha + beta)
-nu = np.sqrt(((alpha + n_satisfy)*(n_trajectories - n_satisfy + beta)) / (pow((alpha + n_trajectories + beta),2)*(alpha + n_trajectories + beta + 1)))
-print("Estiamted property satisfaction:{} +/- {}".format(ro, nu))
+for j in increasing_samples:
+  n_trajectories = 0   # number trajectories drawn so far
+  n_satisfy = 0     # number of trajectories satisfying property so far
+
+  for n_trajectories in range(0,j+1):
+    index_rand = random.randrange(total_combinations)
+    if 'y_val' in  G.nodes[index_rand].keys():
+      y_val_node = G.nodes[index_rand]['y_val']
+      if any(y_val_node>0.8):
+        n_satisfy = n_satisfy + 1
+  print("n_satisfy={}, n_trajectories={}".format(n_satisfy, n_trajectories))
+  print("SMC property satisfaction rate:{}".format(n_satisfy/n_trajectories)) 
+  ro = (n_satisfy + alpha)/(n_trajectories + alpha + beta)
+  nu = np.sqrt(((alpha + n_satisfy)*(n_trajectories - n_satisfy + beta)) / (pow((alpha + n_trajectories + beta),2)*(alpha + n_trajectories + beta + 1)))
+  print("Estiamted property satisfaction:{} +/- {}".format(ro, nu)) 
+  smc_satisfy_rates.append(n_satisfy/n_trajectories)
+  smc_ro_estimates.append(ro)
+  smc_nu_estimates.append(nu)
+
+import seaborn as sns; sns.set()
+import matplotlib.pyplot as plt
+ax = sns.scatterplot(x=increasing_samples, y=smc_ro_estimates)
+ax.errorbar(increasing_samples, smc_ro_estimates, yerr=smc_nu_estimates)
+sns.scatterplot(x=increasing_samples, y=smc_satisfy_rates, ax = ax)
+ax.axhline(gt_satisfy, ls='--', color='r')
+ax.legend(labels=['Ground Truth', 'SMC (theory)', 'SMC (experiment)'])
 
 f
